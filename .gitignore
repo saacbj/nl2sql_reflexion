@@ -5,6 +5,7 @@ assets/*.cast
 
 notes/
 tests/
+langsmith_traces/
 __pycache__/
 
 .env

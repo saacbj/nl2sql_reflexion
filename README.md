@@ -55,9 +55,17 @@ uv run code/main.py
 
 The first phase of this project consists of a Reflection agent that generates, runs, and improves (if required) an SQL query parting from a question asked by the user.
 
-A simple Reflection Agent (as is described in [LangChain's ](https://www.langchain.com/blog/reflection-agents) blog) consists a two-nodes architecture: a generator and a evaluator. First, the generator recieves the prompt from the user (e.g. asking for a tweet with certain topics) and generates a first response. Then, this generation is sent to the evaluator, who creates a critique of the first response. This critique is sent back to the generator, who generates a second iteration of the material taking into account the critique provided by the evaluator.
+A simple Reflection Agent (as is described in [LangChain's](https://www.langchain.com/blog/reflection-agents) blog) consists a two-nodes architecture: a generator and a evaluator. First, the generator recieves the prompt from the user (e.g. asking for a tweet with certain topics) and generates a first response. Then, this generation is sent to the evaluator, who creates a critique of the first response. This critique is sent back to the generator, who generates a second iteration of the material taking into account the critique provided by the evaluator.
 
-![](assets/reflection_simple.drawio.png)
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/reflection_simple.drawio.dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="assets/reflection_simple.drawio.light.png">
+  <img alt="" src="assets/reflection_simple.drawio.light.png">
+</picture>
+
+<br>
 
 Due to a lack of external evaluation, in this setting the evaluator _'guesses'_ if the content provided by the generation is correct or not. That is to say, the evaluator may generate critique even if the content coming from the generator is already suitable for the task. This may be beneficial for subjective tasks, but for tasks such as the one this project tackles it might be disadvantageous.
 
@@ -67,7 +75,15 @@ In order to circumvent this issue, the architecture for this agent considers an 
 
 Due to the deterministic and objective nature of the task (SQL queries), an external source of evaluation is added to the Reflection architecture in the form a `sql_executor` node. This node doesn't make any calls to the LLM, it simply runs the query provided by the generator and catches any error if they were to occur.
 
-![Graph](assets/reflection_with_external_feedback.drawio.png)
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/reflection_with_external_feedback.drawio.dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="assets/reflection_with_external_feedback.drawio.light.png">
+  <img alt="" src="assets/reflection_with_external_feedback.drawio.light.png">
+</picture>
+
+<br>
 
 In this setting, both the `sql_executor` node and the `evaluator` node have conditional edges to the `END` node.
 
@@ -313,7 +329,59 @@ On the other hand, in the second try the agent is prompted with the corrected ca
 
 </details><br>
 
----
+**Example 5.**
+
+[LangSmit Trace](https://smith.langchain.com/public/8af71a65-0d33-4512-b53a-330a82cdfcb5/r/01a07259-b8b2-7263-bc28-0c0360944808?start_time=2026-09-05T16%3A14%3A37.746409Z)
+
+![](assets/example_5.gif)
+
+<details>
+<summary>Full output from the terminal (formatted)</summary>
+
+**Response:** 11
+
+**Using the query:**
+
+```sql
+SELECT COUNT(*) AS TableCount FROM sqlite_master WHERE type = 'table';
+```
+
+**After 2 attempt(s).**
+
+````bash
+========================================
+----- Attempt 1 -----
+Query:
+SELECT COUNT(*) AS TableCount FROM information_schema.tables WHERE table_schema = 'your_database_name';
+Error: no such table: information_schema.tables
+Critique: The error message indicates that the query you attempted to run is targeting a non-existent table, specifically `information_schema.tables`. This discrepancy arises because not all SQL database systems support the `information_schema` as a way to query meta-information about the database.
+
+If you are using SQLite or a similar database system, which does not provide an `information_schema`, you will need to use an alternative approach to count the number of tables directly.
+
+In SQLite, you can query the `sqlite_master` table to get the list of tables. The following query can be utilized instead:
+
+```sql
+SELECT COUNT(*) AS TableCount
+FROM sqlite_master
+WHERE type = 'table';
+```
+
+This query counts all entries in the `sqlite_master` table where the type is 'table', effectively giving you the total number of tables in your database.
+
+Make sure to replace the query with this alternative if you are indeed working with a database system that does not have `information_schema`. Additionally, always confirm the SQL dialect you are using supports the constructs you are attempting to utilize.
+========================================
+````
+
+</details>
+
+<details>
+<summary>Discussion</summary>
+
+This question targets metadata about the database itself rather than its content, thus showing a different failure mode than the previous examples. The first attempt assumes `information_schema` (common across Postgres/MySQL), which SQLite doesn't implement. The correction to `sqlite_master` is a dialect fix, not a schema/JOIN fix.
+
+It is important to notice that the answer is 11 (and not 4) due to the fact that I only described 4 tables in the system prompts of each node, but did not actually modified the database itself.
+
+</details><br>
 
 ## Future Work
 
@@ -325,7 +393,10 @@ On the other hand, in the second try the agent is prompted with the corrected ca
 
 ## Technologies used in this project
 
-- LangChain
-- LangGraph
-  - Conditional nodes
-- SQLite
+- **LangGraph**<br>StateGraph with conditional routing.
+- **LangChain**<br>Structured output (`with_structured_output`) for
+  reliable SQL extraction.
+- **OpenAI `gpt-4o-mini`**<br>For both the generation and evaluation nodes.
+- **SQLite**<br>[Chinook database](https://github.com/lerocha/chinook-database/tree/master), deterministic execution layer with no LLM involvement.
+- **LangSmith**<br>Tracing. Public trace links are included per each example.
+- **uv**<br>Dependency management and reproducible environment.
