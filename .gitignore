@@ -1,9 +1,13 @@
 data/*.sqlite
 data/chinook_schema.png
 
+assets/*.cast
+
 notes/
+tests/
+__pycache__/
 
 .env
 .venv
-
 .DS_Store
+*.py[cod]

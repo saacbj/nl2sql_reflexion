@@ -13,4 +13,11 @@ dependencies = [
     "langgraph>=1.2.11",
     "langsmith>=0.12.1",
     "python-dotenv>=1.2.3",
+    "rich>=15.0.0",
+    "tqdm>=4.70.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
 ]
